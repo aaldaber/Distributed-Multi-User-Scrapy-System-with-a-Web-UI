@@ -1,0 +1,105 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link href="{% static "bootstrap/css/bootstrap.min.css" %}" rel="stylesheet">
+    <link href="{% static "css/styles.css" %}" rel="stylesheet">
+    <title>{% block title %}{% endblock %}</title>
+</head>
+<body>
+    <div class="header">
+	     <div class="container">
+	        <div class="row">
+                {% block loggedin %}
+	           <div class="col-md-6">
+	              <!-- Logo -->
+	              <div class="logo">
+	                 <h1><a href="{% url 'mainpage' %}">Data Collection Framework</a></h1>
+	              </div>
+	           </div>
+                <div class="col-md-6">
+                    <div class="navbar navbar-inverse" role="banner">
+                        <nav class="collapse navbar-collapse bs-navbar-collapse navbar-right" role="navigation">
+	                        <ul class="nav navbar-nav">
+	                            <li class="dropdown">
+	                                <a href="#" class="dropdown-toggle" data-toggle="dropdown"> {{ username }} <b class="caret"></b></a>
+	                                <ul class="dropdown-menu animated fadeInUp">
+                                        <li><a href="/accounts/profile/">Profile</a></li>
+	                                    <li><a href="/accounts/logout/">Logout</a></li>
+	                                </ul>
+	                            </li>
+	                        </ul>
+	                  </nav>
+	              </div>
+	           </div>
+                {% endblock %}
+	        </div>
+	     </div>
+	</div>
+
+    {% block content %}
+    {% endblock %}
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://code.jquery.com/jquery.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="{% static "bootstrap/js/bootstrap.min.js" %}"></script>
+    <script src="{% static "js/custom.js" %}"></script>
+
+    {% block django_csrf_post %}
+        <script src="{% static "js.cookie.js" %}"></script>
+    <script>
+         var csrftoken = Cookies.get('csrftoken');
+    function csrfSafeMethod(method) {
+        return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+    }
+
+$.ajaxSetup({
+    beforeSend: function(xhr, settings) {
+        if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+            xhr.setRequestHeader("X-CSRFToken", csrftoken);
+
+        }
+    }
+});
+        </script>
+    {% endblock %}
+
+
+    {% block system_status %}
+        <script>
+            function get_system_status() {
+        $.post('{% url "globalstatus" %}', function(data) {
+            var html = "<li><a>";
+            if (data['linkgenerator']) {
+                html += "Link Generator: Online<br/>";
+            }
+            else {
+                html += "Link Generator: Offline<br/>";
+            }
+            html += "Online Scrapers: " + data['scrapers'] + "<br/>";
+            if (data['queue']) {
+                html += "Task Queue: Online<br/>";
+            }
+            else {
+                html += "Task Queue: Offline<br/>";
+            }
+            if (data['database']) {
+                html += "Database: Online<br/>";
+            }
+            else {
+                html += "Database: Offline<br/>";
+            }
+            html += "Database Address: " + data['databaseaddress'] + "<br/>";
+            $("#system-status").append(html);
+        });
+    }
+    </script>
+    {% endblock %}
+
+{% block custom_scripts %}
+{% endblock %}
+
+</body>
+</html>

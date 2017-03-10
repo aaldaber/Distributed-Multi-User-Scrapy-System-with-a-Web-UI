@@ -1,0 +1,50 @@
+# -*- coding: utf-8 -*-
+import scrapy
+from scrapy.http import Request
+from scrapy import signals
+from scrapy.utils.reqser import request_to_dict
+from ..rabbitmq import connection
+from twisted.internet.task import LoopingCall
+import datetime
+
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+
+
+class $SpiderClassName(scrapy.Spider):
+    islinkgenerator = True
+    name = '$spider_name'
+
+    @classmethod
+    def from_crawler(cls, crawler, *args, **kwargs):
+        spider = cls(*args, **kwargs)
+        crawler.signals.connect(spider.spider_opened, signal=signals.spider_opened)
+        crawler.signals.connect(spider.spider_closed, signal=signals.spider_closed)
+        spider._set_crawler(crawler)
+        spider.conn = connection.from_settings(crawler.settings, spider.name)
+        spider.queue_name = "%s:requests" % spider.name
+        return spider
+
+    def insert_link(self, request):
+        self.conn.basic_publish(exchange='', routing_key=self.queue_name, body=pickle.dumps(request_to_dict(request, self), protocol=-1))
+
+    def spider_opened(self, spider):
+        self.statstask = LoopingCall(self.stats_saver, spider)
+        self.statstask.start(60)
+
+    def spider_closed(self, spider):
+        connection.close(self.conn)
+        self.statstask.stop()
+        spider.crawler.stats.inc_value('project_stopped', spider=spider)
+        self.stats_saver(spider)
+
+    def stats_saver(self, spider):
+        data = spider.crawler.stats.get_stats()
+        if data.get('start_time', 0):
+            data['start_time'] = str(data['start_time'])
+        if data.get('finish_time', 0):
+            data['finish_time'] = str(data['finish_time'])
+        with open('%s/%s/%s/stats.log' % ('logs', spider.name, spider.name), 'w') as f:
+            f.write(str(data))

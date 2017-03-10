@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block title %}Edit Item Pipeline{% endblock %}
+{% load crispy_forms_tags %}
+{% block content %}
+    {% load static %}
+
+    <div class="page-content">
+    	<div class="row">
+		    <div class="col-md-3">
+		  	    <div class="sidebar content-box" style="display: block;">
+                    <div class="text-center">
+                        <h2>{{ project }}</h2>
+                    </div>
+                    <ul id="system-status" class="nav">
+                        <li><a><i class="glyphicon glyphicon-stats"></i>System Status</a></li>
+                    </ul>
+                    {% if items %}
+                        <ul class="nav">
+                        <li><a><i class="glyphicon glyphicon-list"></i>Defined Items and their fields:</a></li>
+                        {% for key, value in items.items %}
+                            <li><a>{{ key }}: {% for i in value %}{{i}} {% endfor %}</a></li>
+                        {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+		    </div>
+
+            <div class="col-md-9">
+                <div class="content-box-large">
+                    <div class="panel-heading">
+                        <div class="panel-title">Edit an Item Pipeline</div>
+                    </div>
+                    <div class="panel-body">
+                        <div id="rootwizard">
+                            <div class="tab-content">
+                                <div class="tab-pane active" id="tab1">
+                                    <form method="post" action="">
+                                         {% csrf_token %}
+                                         {% crispy form %}
+                                         <div style="text-align: right">
+                                            <input id="save" type="submit" name="submit" value="Save" class="btn btn-primary">
+                                            <input type="submit" name="cancel" value="Cancel" class="btn">
+                                         </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+{% endblock %}
+
+{% block custom_scripts %}
+    <script src="{% static "codemirror/lib/codemirror.js"%}"></script>
+    <link rel="stylesheet" href="{% static "codemirror/lib/codemirror.css" %}">
+    <link rel="stylesheet" href="{% static "codemirror/theme/dracula.css" %}">
+    <script src="{% static "codemirror/mode/python/python.js" %}"></script>
+    <script>
+    var tArea = document.getElementById("id_pipelinefunction");
+    var myCodeMirror = CodeMirror.fromTextArea(tArea, {value: tArea.value, theme: "dracula", lineNumbers: true});
+    myCodeMirror.setSize(null, 1000);
+        $("#save").click(function() {
+            myCodeMirror.save();
+        });
+
+    $(document).ready(function(){
+        get_system_status();
+});
+    </script>
+{% endblock %}

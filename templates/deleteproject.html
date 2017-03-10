@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Delete the project{% endblock %}
+
+{% load crispy_forms_tags %}
+
+{% block content %}
+
+<div class="page-content container">
+		<div class="row">
+			<div class="col-md-4 col-md-offset-4">
+				<div class="login-wrapper">
+			        <div class="box">
+			            <div class="content-wrap">
+			                <h6>Delete Project</h6>
+                            <p>Please confirm that you want to delete the project <b>{{ projectname }}</b></p>
+                            {% csrf_token %}
+                            {% crispy form %}
+			            </div>
+			        </div>
+			    </div>
+			</div>
+		</div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}{{ project }} - Deployment Status{% endblock %}
+{% block content %}
+    {% load static %}
+
+    <div class="page-content">
+        {% csrf_token %}
+    	<div class="row">
+		    <div class="col-md-3">
+		  	    <div class="sidebar content-box" style="display: block;">
+                    <div class="text-center">
+                        <a href="{% url "manageproject" project %}"><h2>{{ project }}</h2></a>
+                        <a href="#" id="startonall" class="btn btn-primary btn-block" role="button">START ON ALL WORKERS</a>
+                        <a href="#" id="stoponall" class="btn btn-danger btn-block" role="button">STOP ON ALL WORKERS</a>
+                    </div>
+                    <ul id="system-status" class="nav">
+                        <li><a><i class="glyphicon glyphicon-stats"></i>System Status</a></li>
+                    </ul>
+                </div>
+		    </div>
+            <div class="col-md-9">
+                <div class="content-box-large">
+  				    <div class="panel-heading">
+					    <div class="panel-title">Project - {{ project }}</div>
+				    </div>
+  				    <div class="panel-body">
+  					    <div class="table-responsive">
+  						    <table class="table">
+			                    <thead>
+			                    <tr>
+			                    <th>#</th>
+			                    <th>Worker Name</th>
+			                    <th>Status</th>
+                                <th>Version</th>
+                                <th>Operation</th>
+			                    </tr>
+			                    </thead>
+                                <tbody>
+                                {% for i in workers %}
+                                <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ i.name }}</td>
+                                <td id="{{ i.name }}-status">{{ i.status }}</td>
+                                <td id="{{ i.name }}-version">{{ i.version }}</td>
+                                <td class="text-center">
+                                    <a href="#" id="{{ i.name }}-startbutton" class="btn btn-block btn-primary disabled">START</a><br/>
+                                    <a href="#" id="{{ i.name }}-stopbutton" class="btn btn-block btn-danger disabled">STOP</a>
+                                </td>
+                                </tr>
+                                {% endfor %}
+			                    </tbody>
+			                </table>
+  					    </div>
+  				    </div>
+  			    </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block custom_scripts %}
+    <script>
+
+    function get_status_from_workers() {
+        $.post('{% url "allworkerstatus" project %}', function(data){
+        $.each(data, function(index) {
+
+          var trstatus = "#"+data[index]['name']+"-status";
+          var trversion = "#"+data[index]['name']+"-version";
+          var startbutton = "#"+data[index]["name"]+"-startbutton";
+          var stopbutton = "#"+data[index]["name"]+"-stopbutton";
+
+          $(trstatus).text(data[index]['status']);
+          $(trversion).text(data[index]['version']);
+
+          if (data[index]['status'] == 'ready'){
+              $(startbutton).removeClass("disabled");
+              $(stopbutton).addClass("disabled");
+              $(startbutton).text("START");
+          }
+          if (data[index]['status'] == 'pending'){
+              $(stopbutton).removeClass("disabled");
+              $(startbutton).addClass("disabled");
+              $(stopbutton).text("DESCHEDULE");
+          }
+          if (data[index]['status'] == 'running'){
+              $(stopbutton).removeClass("disabled");
+              $(startbutton).addClass("disabled");
+              $(stopbutton).text("STOP");
+          }
+          if (data[index]['status'] == 'finished'){
+              $(startbutton).removeClass("disabled");
+              $(stopbutton).addClass("disabled");
+              $(startbutton).text("RESTART");
+              var loglink = "{% url 'seelogfile' project 'placeholder' %}";
+                  loglink = loglink.replace('placeholder', data[index]['name']);
+              $(trstatus).append('<br/><a href="' + loglink + '">See log file</a>');
+          }
+          if (data[index]['status'] == 'not deployed' || data[index]['status'] == 'unknown' || data[index]['status'] == 'unreachable'){
+              $(startbutton).addClass("disabled");
+              $(stopbutton).addClass("disabled");
+          }
+      });
+  });
+}
+
+$(document).ready(function(){
+    setInterval(get_status_from_workers, 5000);
+    get_status_from_workers();
+    get_system_status();
+});
+
+$(".btn").click(function(event) {
+   var str = event.target.id;
+   if (str != "startonall" && str != "stoponall") {
+       $("#" + str.substr(0, str.indexOf('-')) + "-startbutton").addClass("disabled");
+       $("#" + str.substr(0, str.indexOf('-')) + "-stopbutton").addClass("disabled");
+   }
+   else {
+       $("#" + str).addClass("disabled");
+       if (str == "startonall") {
+           $.post('{% url "startonall" project %}');
+       }
+       if (str == "stoponall") {
+           $.post('{% url "stoponall" project %}');
+       }
+   }
+   if (str.match("^linkgenerator")) {
+       if (str.match("startbutton$")) {
+           $.post('{% url "startproject" project 'linkgenerator' %}');
+       }
+       if (str.match("stopbutton$")) {
+           $.post('{% url "stopproject" project 'linkgenerator' %}');
+       }
+   }
+   if (str.match("^worker")) {
+       if (str.match("startbutton$")) {
+           $.post('{% url "startproject" project 'placeholder' %}'.replace('placeholder', str.substr(0, str.indexOf('-'))));
+       }
+       if (str.match("stopbutton$")) {
+           $.post('{% url "stopproject" project 'placeholder' %}'.replace('placeholder', str.substr(0, str.indexOf('-'))));
+       }
+   }
+});
+
+    </script>
+{% endblock %}

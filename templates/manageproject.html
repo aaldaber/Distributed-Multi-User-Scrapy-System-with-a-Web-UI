@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+{% block title %}Manage Project{% endblock %}
+{% block content %}
+    {% load static %}
+
+    <div class="page-content">
+        <div class="row">
+		  <div class="col-md-3">
+		  	<div class="sidebar content-box" style="display: block;">
+                <div class="text-center">
+                    <h2>{{ project }}</h2>
+                    {% if projectdata.items %}
+                    <a href="{% url 'listitems' project %}" class="btn btn-info btn-block" role="button">Edit Items</a>
+                    {% else %}
+                    <a href="{% url 'newitem' project %}" class="btn btn-info btn-block" role="button">Add Item</a>
+                    {% endif %}
+                    {% if projectdata.pipelines %}
+                    <a href="{% url 'listpipelines' project %}" class="btn btn-info btn-block" role="button">Edit Pipelines</a>
+                    {% else %}
+                    <a href="{% url 'addpipeline' project %}" class="btn btn-info btn-block" role="button">Add Pipeline</a>
+                    {% endif %}
+                    {% if projectdata.link_generator %}
+                    <a href="{% url 'linkgenerator' project %}" class="btn btn-info btn-block" role="button">Edit Link Generator function</a>
+                    {% else %}
+                    <a href="{% url 'linkgenerator' project %}" class="btn btn-info btn-block" role="button">Add Link Generator function</a>
+                    {% endif %}
+                    {% if projectdata.scraper_function %}
+                    <a href="{% url 'scraper' project %}" class="btn btn-info btn-block" role="button">Edit Scraper function</a>
+                    {% else %}
+                    <a href="{% url 'scraper' project %}" class="btn btn-info btn-block" role="button">Add Scraper function</a>
+                    {% endif %}
+                    {% if projectdata.items and projectdata.link_generator and projectdata.scraper_function %}
+                    <a href="{% url 'deploy' project %}" class="btn btn-success btn-block" role="button">Deploy Project</a>
+                    {% endif %}
+                </div>
+                <ul id="system-status" class="nav">
+                    <li><a><i class="glyphicon glyphicon-stats"></i>System Status</a></li>
+                </ul>
+                <div class="text-center">
+                    <a href="{% url 'deploystatus' project %}" class="btn btn-info btn-block" role="button">See Project's Deployment Status</a>
+                </div>
+            </div>
+		  </div>
+
+        <div class="col-md-3">
+            <div class="content-box-large">
+                <div class="panel-heading">
+                    <div class="panel-title">Summary</div>
+                </div>
+                <div class="panel-body">
+                    <table class="table table-bordered">
+                        <tbody>
+                        <tr>
+                            <td>Defined items</td>
+                            <td>{{ projectdata.items|length }}</td>
+                        </tr>
+                        <tr>
+                            <td>Defined item pipelines</td>
+                            <td>{{ projectdata.pipelines|length }}</td>
+                        </tr>
+                        <tr>
+                            <td>Link generator function defined</td>
+                            <td>{{ projectdata.link_generator }}</td>
+                        </tr>
+                        <tr>
+                            <td>Scraper function defined</td>
+                            <td>{{ projectdata.scraper_function }}</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="content-box-large">
+                <div class="panel-heading">
+                    <div class="panel-title">Info</div>
+                </div>
+                <div class="panel-body">
+                    <p>First, define items that you want to scrape from the website.
+                        Item objects are simple containers used to collect the scraped data.
+                        They provide a dictionary-like API with a convenient syntax for declaring their available fields.
+                        There is one extra item field called 'ack_signal' that you will need to set inside your scraper function:
+                        all you need to do is to set <b>item['ack_signal'] = int(response.meta['ack_signal'])</b> before you return any item.<br/>
+                        <a href="https://doc.scrapy.org/en/latest/topics/items.html">Read more</a> about Scrapy Items.
+                    </p>
+                    <p>
+                        After an item has been scraped by a spider, it is sent to the Item Pipeline which processes
+                        it through several components that are executed sequentially.
+                        Each item pipeline component (sometimes referred as just “Item Pipeline”) is a Python class
+                        that implements a simple method. They receive an item and perform an action over it,
+                        also deciding if the item should continue through the pipeline or be dropped and no longer processed.
+                        <br/>
+                        Typical uses of item pipelines are:<br/>
+                        - cleansing HTML data<br/>
+                        - validating scraped data (checking that the items contain certain fields)<br/>
+                        - checking for duplicates (and dropping them)<br/>
+                        - storing the scraped item in a database<br/>
+                        <a href="https://doc.scrapy.org/en/latest/topics/item-pipeline.html">Read more</a> about Scrapy Item pipelines.
+                    </p>
+                    <p>
+                        Link Generator function is used to insert the links to be requested to the shared task queue.
+                        One machine in a cluster of workers will act as the link generator, while all other worker machines will act as scrapers.
+                        Don't return or yield any items inside link generator function.
+                        Create a <a href="https://doc.scrapy.org/en/latest/topics/request-response.html#scrapy.http.Request">Request</a> object with the default callback <b>self.parse</b>,
+                        and insert the request into the queue using <b>self.insert_link(request)</b> function.
+                    </p>
+                    <p>
+                        The scraper function will fetch the request objects from the shared queue,
+                        make requests, receive responses, extract needed pieces of information,
+                        and save them to a database. Inside the scraper function you will use Item objects to populate and return them.
+                        Don't forget to set the <b>'ack_signal'</b> key for each item that you return.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="content-box-large">
+                    <div class="panel-heading">
+                        <div class="panel-title">Scraper Settings</div>
+                        <div class="panel-options">
+                            <a href="{% url 'editsettings' settingtype='scraper' projectname=project %}" data-rel="reload"><i class="glyphicon glyphicon-cog"></i></a>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <textarea id="scraper-settings">{{ projectdata.settings_scraper }}</textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="content-box-large">
+                    <div class="panel-heading">
+                        <div class="panel-title">Link Generator Settings</div>
+                        <div class="panel-options">
+                            <a href="{% url 'editsettings' settingtype='linkgenerator' projectname=project %}" data-rel="reload"><i class="glyphicon glyphicon-cog"></i></a>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <textarea id="linkgenerator-settings">{{ projectdata.settings_link_generator}}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block custom_scripts %}
+    <script src="{% static "codemirror/lib/codemirror.js"%}"></script>
+    <link rel="stylesheet" href="{% static "codemirror/lib/codemirror.css" %}">
+    <link rel="stylesheet" href="{% static "codemirror/theme/dracula.css" %}">
+    <script src="{% static "codemirror/mode/python/python.js" %}"></script>
+    <script>
+    var tArea = document.getElementById("scraper-settings");
+    var tArea2 = document.getElementById("linkgenerator-settings");
+
+    var myCodeMirror = CodeMirror.fromTextArea(tArea, {value: tArea.value, theme: "dracula", lineNumbers: true, readOnly: "nocursor"});
+    myCodeMirror.setSize(null, 500);
+
+    var myCodeMirror2 = CodeMirror.fromTextArea(tArea2, {value: tArea2.value, theme: "dracula", lineNumbers: true, readOnly: "nocursor"});
+    myCodeMirror2.setSize(null, 500);
+
+    $(document).ready(function(){
+        get_system_status();
+});
+    </script>
+{% endblock %}

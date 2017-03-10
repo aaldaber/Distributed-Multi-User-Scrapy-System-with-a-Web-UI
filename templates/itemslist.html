@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %} {{ project }} - Edit Items{% endblock %}
+{% block content %}
+
+    <div class="page-content">
+    	<div class="row">
+		    <div class="col-md-3">
+		  	    <div class="sidebar content-box" style="display: block;">
+                    <div class="text-center">
+                        <a href="{% url 'manageproject' project %}"><h2>{{ project }}</h2></a>
+                        <a href="{% url 'newitem' project %}" class="btn btn-info btn-block" role="button">Add Item</a>
+                    </div>
+                    <ul id="system-status" class="nav">
+                        <li><a><i class="glyphicon glyphicon-stats"></i>System Status</a></li>
+                    </ul>
+                </div>
+		    </div>
+            <div class="col-md-9">
+                <div class="content-box-large">
+  				    <div class="panel-heading">
+                        <div class="panel-title">Items</div>
+				    </div>
+                    {% if items %}
+  				    <div class="panel-body">
+  					    <div class="table-responsive">
+  						    <table class="table">
+			                <thead>
+			                    <tr>
+			                        <th>#</th>
+			                        <th>Item Name</th>
+			                        <th>Fields</th>
+                                    <th>Operations</th>
+			                    </tr>
+			                </thead>
+			                <tbody>
+                                {% for i in items %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ i.0 }}</td>
+                                    <td>
+                                    {% for z in i.1 %}
+                                    {{ z }}
+                                    <br/>
+                                    {% endfor %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'edititem' project i.0 %}">Edit</a>
+                                        <br/>
+                                        <a href="{% url 'deleteitem' project i.0 %}">Delete</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+			                </tbody>
+			                </table>
+  					    </div>
+  				    </div>
+                    {% else %}
+                    <div class="panel-body">
+                        You don't have any items in this project
+                    </div>
+                    {% endif %}
+  			    </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block custom_scripts %}
+
+    <script>
+    $(document).ready(function(){
+        get_system_status();
+});
+    </script>
+
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}Add an Item{% endblock %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+
+    <div class="page-content">
+    	<div class="row">
+            <div class="col-md-3">
+                <div class="sidebar content-box" style="display: block;">
+                    <div class="text-center">
+                        <h2>{{ project }}</h2>
+                    </div>
+                    <ul id="system-status" class="nav">
+                        <li><a><i class="glyphicon glyphicon-stats"></i>System Status</a></li>
+                    </ul>
+                </div>
+		    </div>
+
+            <div class="col-md-4 col-md-offset-1">
+				<div class="login-wrapper">
+			        <div class="box">
+			            <div class="content-wrap">
+			                <h6>New Item</h6>
+                            <form method="post" action="">
+                                {% csrf_token %}
+                                {% crispy form1 %}
+                                {% crispy form2 %}
+                                <button style="margin-bottom: 5px" id="remove-one" class="btn btn-danger btn-block">Remove a field</button>
+                                <br/>
+                                <button style="margin-bottom: 5px" id="add-another" class="btn btn-block">Add another field</button>
+                                <div style="text-align: right">
+                                    <input type="submit" name="submit" value="Create" class="btn btn-primary btn-block">
+                                    <input type="submit" name="cancel" value="Cancel" class="btn btn-block">
+                                </div>
+                            </form>
+			            </div>
+			        </div>
+			    </div>
+			</div>
+
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block custom_scripts %}
+<script>
+form_count = Number($("[name=extra_field_count]").val());
+if (form_count > 0){
+    $("#remove-one").show();
+}
+else{
+    $("#remove-one").hide();
+}
+$("#add-another").click(function() {
+    form_count ++;
+    $("[name=extra_field_count]").val(form_count);
+});
+$("#remove-one").click(function() {
+    form_count --;
+    $("[name=extra_field_count]").val(form_count);
+});
+$(document).ready(function(){
+        get_system_status();
+});
+</script>
+{% endblock %}

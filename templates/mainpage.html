@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}Main Page{% endblock %}
+{% block content %}
+    {% load static %}
+
+        <div class="page-content">
+    	    <div class="row">
+		        <div class="col-md-3">
+		  	        <div class="sidebar content-box" style="display: block;">
+                        <div class="text-center">
+                            <a href="{% url 'newproject' %}" class="btn btn-info btn-block" role="button">New Project</a>
+                        </div>
+                        <ul id="system-status" class="nav">
+                        <!-- Main menu -->
+                            <li><a><i class="glyphicon glyphicon-stats"></i>System Status</a></li>
+                        </ul>
+                        <div class="text-center">
+                            {% if dbpassexists %}
+                            <a href="{% url 'setdbpass' %}" class="btn btn-info btn-block" role="button">Change Database Password</a>
+                            {% else %}
+                            <a href="{% url 'setdbpass' %}" class="btn btn-info btn-block" role="button">Create Database Password</a>
+                            {% endif %}
+                        </div>
+                    </div>
+		        </div>
+                <div class="col-md-9">
+                    <div class="content-box-large">
+  				        <div class="panel-heading">
+					        <div class="panel-title">Projects</div>
+				        </div>
+                        {% if projects %}
+  				        <div class="panel-body">
+  					        <div class="table-responsive">
+  						        <table class="table">
+			                    <thead>
+			                        <tr>
+			                            <th>#</th>
+			                            <th>Project Name</th>
+			                            <th>Status</th>
+			                            <th>Start/Finish times</th>
+                                        <th>Items scraped</th>
+                                        <th>Errors</th>
+                                        <th>Operations</th>
+			                        </tr>
+			                    </thead>
+			                    <tbody>
+                                {% for i in projects %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>{{ i.name }}</td>
+                                        <td id="{{ i.name }}-status">Loading...</td>
+                                        <td id="{{ i.name }}-duration">Loading...</td>
+                                        <td id="{{ i.name }}-scrapeditems">Loading...</td>
+                                        <td id="{{ i.name }}-errors">Loading...</td>
+                                        <td>
+                                            <a href="{% url 'manageproject' i.name %}">Manage</a>
+                                            <br/>
+                                            <a href="{% url 'deleteproject' i.name %}">Delete</a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+			                    </tbody>
+			                    </table>
+  					        </div>
+  				        </div>
+                        {% else %}
+
+                        <div class="panel-body">
+                            You don't have any projects
+                        </div>
+                        {% endif %}
+  			        </div>
+                </div>
+            </div>
+        </div>
+
+{% endblock %}
+
+{% block custom_scripts %}
+
+    <script>
+
+    function get_all_status() {
+  $.post('{% url "allprojectstatus" %}', function(data){
+      $.each(data, function(index) {
+
+          var trstatus = "#"+index+"-status";
+          var trduration = "#"+index+"-duration";
+          var trscrapeditems = "#"+index+"-scrapeditems";
+          var trerrors = "#"+index+"-errors";
+
+          if (data[index]['running'] || data[index]['finished']) {
+              $(trstatus).text("");
+              $(trscrapeditems).text("0");
+              $(trerrors).text("0");
+              $(trduration).text("");
+              if (data[index]['running']) {
+                  $(trstatus).append("Running on " + data[index]['running'] + " workers.</br/>");
+              }
+              if (data[index]['finished']) {
+                  $(trstatus).append("Done on " + data[index]['finished'] + " workers.");
+              }
+              if (data[index]['errors']) {
+                  $(trerrors).text(data[index]['errors']);
+              }
+
+              if (data[index]['earliest_start_time']) {
+                  $(trduration).append("Earliest start time: "+data[index]['earliest_start_time']+"</br>");
+              }
+              if (data[index]['earliest_finish_time']) {
+                  $(trduration).append("Earliest finish time: "+data[index]['earliest_finish_time']+"</br>");
+              }
+              if (data[index]['latest_start_time']) {
+                  $(trduration).append("Latest start time: "+data[index]['latest_start_time']+"</br>");
+              }
+              if (data[index]['latest_finish_time']) {
+                  $(trduration).append("Latest finish time: "+data[index]['latest_finish_time']+"</br>");
+              }
+
+              $.each(data[index], function(k,v) {
+                  if (k.match("^item-")){
+                      if ($(trscrapeditems).text() != "0") {
+                          $(trscrapeditems).append(k.substr(k.indexOf('-') + 1) + ": " + v + "<br/>")
+                      }
+                      else {
+                          $(trscrapeditems).html(k.substr(k.indexOf('-') + 1) + ": " + v + "<br/>")
+                      }
+                  }
+              });
+
+          }
+          else if (data[index]['hasntlaunched']) {
+              $(trstatus).text("Hasn't been run yet.");
+              $(trduration).text("N/A");
+              $(trscrapeditems).text("N/A");
+              $(trerrors).text("N/A");
+          }
+          else if (data[index]['unknown']) {
+              $(trstatus).text("Unknown");
+              $(trduration).text("N/A");
+              $(trscrapeditems).text("N/A");
+              $(trerrors).text("N/A");
+          }
+
+      });
+  });
+}
+
+
+    $(document).ready(function(){
+        setInterval(get_all_status , 30000);
+        get_all_status();
+        get_system_status();
+});
+
+    </script>
+{% endblock %}

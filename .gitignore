@@ -1,0 +1,6 @@
+.idea/
+db.sqlite3
+settings.py
+projects/
+__pycache__/
+*.py[cod]

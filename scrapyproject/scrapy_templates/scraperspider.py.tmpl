@@ -1,0 +1,43 @@
+# -*- coding: utf-8 -*-
+import scrapy
+from scrapy.http import Request
+from scrapy import signals
+from ..items import *
+from twisted.internet.task import LoopingCall
+import datetime
+
+class $SpiderClassName(scrapy.Spider):
+    islinkgenerator = False
+    name = '$spider_name'
+    start_urls = []
+
+    @classmethod
+    def from_crawler(cls, crawler, *args, **kwargs):
+        spider = cls(*args, **kwargs)
+        crawler.signals.connect(spider.spider_opened, signal=signals.spider_opened)
+        crawler.signals.connect(spider.spider_closed, signal=signals.spider_closed)
+        crawler.signals.connect(spider.item_scraped, signal=signals.item_scraped)
+        spider._set_crawler(crawler)
+        return spider
+
+    def spider_opened(self, spider):
+        self.statstask = LoopingCall(self.stats_saver, spider)
+        self.statstask.start(60)
+
+    def spider_closed(self, spider):
+        self.statstask.stop()
+        spider.crawler.stats.inc_value('project_stopped', spider=spider)
+        self.stats_saver(spider)
+
+    def item_scraped(self, item, response, spider):
+        item_name = item.__class__.__name__
+        spider.crawler.stats.inc_value(item_name, spider=spider)
+
+    def stats_saver(self, spider):
+        data = spider.crawler.stats.get_stats()
+        if data.get('start_time', 0):
+            data['start_time'] = str(data['start_time'])
+        if data.get('finish_time', 0):
+            data['finish_time'] = str(data['finish_time'])
+        with open('%s/%s/%s/stats.log' % ('logs', spider.name, spider.name), 'w') as f:
+            f.write(str(data))
