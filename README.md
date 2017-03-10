@@ -26,17 +26,21 @@ The application comes bundled with Scrapy pipeline for MongoDB (for saving the s
 After you have all of the above up and running, fill sample_settings.py in root folder and  scrapyproject/scrapy_packages/sample_settings.py files with needed information, rename both files to settings.py, and run the Django server (don't forget to perform the migrations first). You can go to http://localhost:8000/project/ to start creating your first project.
 
 # Link Generator
+
 The link generator function is a function that will insert all the links that need to be scraped to the RabbitMQ queue. Scraper workers will be dequeueing those links, scraping the items and saving the items to MongoDB. The link generator itself is just a Scrapy spider written insde parse(self, response) function. The only thing different from the regular spider is that the link generator will not scrape and save items, it will only extract the needed links to be scraped and insert them to the RabbitMQ for scraper machines to consume.
 
 # Scrapers
+
 The scraper function is a function that will take links from RabbitMQ, make a request to that link, parse the response, and save the items to DB. The scraper is also just a Scrapy spider, but without the functionality to add links to the queue.
 
 This separation of roles allows to distribute the links to multiple scrapers evenly. There can be only one link generator per project, and unlimited number of scrapers.
 
 # RabbitMQ
+
 When a project is deployed and run, the link generator will create a queue for the project in *username_projectname*:requests format, and will start inserting links. Scrapers will use RabbitMQ Scheduler in Scrapy to get one link at a time and process it. 
 
 # MongoDB
+
 All of the items that get scraped will be saved to MongoDB. There is no need to prepare the database or collections beforehand. When the first item gets saved to DB, the scraper will create a database in *username_projectname* format and will insert items to a collection named after the item's name defined in Scrapy. If you are using a sharded cluster of MongoDB servers, the scrapers will try to authoshard the database and the collections when saving the items. The hashed id key is used for sharding.
 
 Here are the general steps that the application performs:
@@ -50,6 +54,7 @@ Here are the general steps that the application performs:
 8. You start the scrapers
 
 ### Installation
+
 The web application requires:
 - Django 1.8.13 
 - django-crispy-forms
@@ -64,7 +69,12 @@ On the link generator and scraper machines you need:
 - pymongo
 - pika
 
-The dashboard theme used in the UI was retrieved from https://github.com/VinceG/Bootstrap-Admin-Theme. 
+The dashboard theme used for the UI was retrieved from https://github.com/VinceG/Bootstrap-Admin-Theme. 
 
 # Examples
+
 Link generator and scraper functions are given in the examples folder.
+
+# License
+
+This project is licensed under the terms of the MIT license.
