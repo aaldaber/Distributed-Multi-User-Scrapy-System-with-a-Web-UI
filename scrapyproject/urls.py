@@ -28,4 +28,5 @@ urlpatterns = [
     url(r'^startonall/(?P<projectname>[\w]+)/', views.start_project_on_all, name="startonall"),
     url(r'^stoponall/(?P<projectname>[\w]+)/', views.stop_project_on_all, name="stoponall"),
     url(r'^globalstatus/', views.get_global_system_status, name="globalstatus"),
+    url(r'^sharedb/(?P<projectname>[\w]+)/', views.share_db, name="sharedatabase"),
 ]

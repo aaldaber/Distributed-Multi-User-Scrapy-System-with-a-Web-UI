@@ -56,6 +56,8 @@
                                             <a href="{% url 'manageproject' i.name %}">Manage</a>
                                             <br/>
                                             <a href="{% url 'deleteproject' i.name %}">Delete</a>
+                                            <br/>
+                                            <a href="{% url 'sharedatabase' i.name %}">Share database</a>
                                         </td>
                                     </tr>
                                 {% endfor %}

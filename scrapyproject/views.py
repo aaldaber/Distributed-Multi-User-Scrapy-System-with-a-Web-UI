@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from .forms import CreateProject, DeleteProject, ItemName, FieldName, CreatePipeline, LinkGenerator, Scraper, CreateDBPass, Settings
+from .forms import CreateProject, DeleteProject, ItemName, FieldName, CreatePipeline, LinkGenerator, Scraper, CreateDBPass, Settings, ShareDB
 from django.http import HttpResponseRedirect
 from django.http import HttpResponse, HttpResponseNotFound, JsonResponse
 from .models import Project, Item, Pipeline, Field, MongoPass, LinkgenDeploy, ScrapersDeploy
@@ -19,6 +19,9 @@ import json
 import datetime
 import dateutil.parser
 import socket
+from django.contrib.auth.models import User
+from bson.json_util import dumps
+import threading
 try:
     # Python 3
     from urllib.parse import urlparse
@@ -1427,3 +1430,96 @@ def get_global_system_status(request):
     status['databaseaddress'] = settings.MONGODB_PUBLIC_ADDRESS
 
     return JsonResponse(status, safe=False)
+
+@login_required
+def share_db(request, projectname):
+    uniqueprojectname = request.user.username + '_' + projectname
+    try:
+        project = Project.objects.get(user=request.user, project_name=projectname)
+    except Project.DoesNotExist:
+        return HttpResponseNotFound('Nothing is here.')
+
+    if request.method == 'GET':
+        form = ShareDB()
+        return render(request, 'sharedb.html', {'username': request.user.username, 'form': form, 'projectname': projectname})
+    if request.method == 'POST':
+        if 'cancel' in request.POST:
+            return HttpResponseRedirect(reverse("mainpage"))
+        elif 'submit' in request.POST:
+            try:
+                dbpass = MongoPass.objects.get(user=request.user)
+                password = dbpass.password
+            except MongoPass.DoesNotExist:
+                password = request.user.username
+            form = ShareDB(request.POST)
+            if form.is_valid():
+                uname = form.cleaned_data['username']
+                if uname == request.user.username:
+                    errors = form._errors.setdefault("username", ErrorList())
+                    errors.append('User name %s is your own account name.' % uname)
+                    return render(request, 'sharedb.html',
+                                  {'username': request.user.username, 'form': form, 'projectname': projectname})
+                try:
+                    username = User.objects.get(username=uname)
+                except User.DoesNotExist:
+                    errors = form._errors.setdefault("username", ErrorList())
+                    errors.append('User %s does not exist in the system.' % uname)
+                    return render(request, 'sharedb.html', {'username': request.user.username, 'form': form, 'projectname': projectname})
+                #start thread here
+                thr = threading.Thread(target=sharing_db, args=(uniqueprojectname, username.username, projectname, request.user.username), kwargs={})
+                thr.start()
+                return render(request, 'sharedb_started.html',
+                                  {'username': request.user.username})
+            else:
+                return render(request, 'sharedb.html', {'username': request.user.username, 'form': form, 'projectname': projectname})
+
+
+def sharing_db(dbname, target_user, projectname, username):
+    targetuser = User.objects.get(username=target_user)
+    target_db_name = '%s_sharedby_%s' % (projectname, username)
+
+    try:
+        dbpass = MongoPass.objects.get(user=targetuser)
+        target_password = dbpass.password
+    except MongoPass.DoesNotExist:
+        target_password = target_user
+
+    mongouri = "mongodb://" + settings.MONGODB_USER + ":" + quote(
+        settings.MONGODB_PASSWORD) + "@" + settings.MONGODB_URI + "/admin"
+    connection = MongoClient(mongouri)
+
+    database = connection[dbname]
+
+    target_db = connection[target_db_name]
+
+    if settings.MONGODB_SHARDED:
+        try:
+            connection.admin.command('enableSharding', target_db_name)
+        except:
+            pass
+
+    collections = database.collection_names()
+    for i, collection_name in enumerate(collections):
+        if collection_name != u'system.indexes':
+            if settings.MONGODB_SHARDED:
+                try:
+                    connection.admin.command('shardCollection', '%s.%s' % (target_db_name, collection_name),
+                                                  key={'_id': "hashed"})
+                except:
+                    pass
+            col = connection[dbname][collection_name]
+            insertcol = connection[target_db_name][collection_name]
+            skip = 0
+            collection = col.find(filter={}, projection={'_id': False}, limit=100, skip=skip*100)
+            while collection.count() > 0:
+                skip += 1
+                items = []
+                for item in collection:
+                    items.append(item)
+                insertcol.insert_many(items)
+                collection = col.find(filter={}, projection={'_id': False}, limit=100, skip=skip * 100)
+
+    target_db.add_user(target_user, target_password,
+                       roles=[{'role': 'dbOwner', 'db': target_db_name}])
+    connection.close()
+

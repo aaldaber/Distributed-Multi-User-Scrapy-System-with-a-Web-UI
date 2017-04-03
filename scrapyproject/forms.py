@@ -74,3 +74,11 @@ class Settings(forms.Form):
     settings = forms.CharField(required=False, widget=forms.Textarea)
     helper = FormHelper()
     helper.form_tag = False
+
+
+class ShareDB(forms.Form):
+    username = forms.CharField(label="Enter the account name for the user with whom you want to share the database", max_length=150, required=True)
+    helper = FormHelper()
+    helper.form_method = 'POST'
+    helper.add_input(Submit('submit', 'Share'))
+    helper.add_input(Submit('cancel', 'Cancel', css_class='btn-default'))
