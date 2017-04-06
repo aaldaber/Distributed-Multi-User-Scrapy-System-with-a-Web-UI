@@ -15,12 +15,12 @@
                             <li><a><i class="glyphicon glyphicon-stats"></i>System Status</a></li>
                         </ul>
                         <div class="text-center">
-                            {% if dbpassexists %}
-                            <a href="{% url 'setdbpass' %}" class="btn btn-info btn-block" role="button">Change Database Password</a>
-                            {% else %}
-                            <a href="{% url 'setdbpass' %}" class="btn btn-info btn-block" role="button">Create Database Password</a>
-                            {% endif %}
+                            <a href="{% url 'changepass' %}" class="btn btn-info btn-block" role="button">Change Account Password</a>
                         </div>
+                        <ul class="nav">
+                            <li><a>Databases you can access:</a></li>
+                            <li><a>{{ databases }}</a></li>
+                        </ul>
                     </div>
 		        </div>
                 <div class="col-md-9">
@@ -58,6 +58,8 @@
                                             <a href="{% url 'deleteproject' i.name %}">Delete</a>
                                             <br/>
                                             <a href="{% url 'sharedatabase' i.name %}">Share database</a>
+                                            <br/>
+                                            <a href="{% url 'shareproject' i.name %}">Share project files</a>
                                         </td>
                                     </tr>
                                 {% endfor %}

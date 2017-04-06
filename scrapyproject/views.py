@@ -1,9 +1,10 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from .forms import CreateProject, DeleteProject, ItemName, FieldName, CreatePipeline, LinkGenerator, Scraper, CreateDBPass, Settings, ShareDB
+from django.contrib.auth import update_session_auth_hash
+from .forms import CreateProject, DeleteProject, ItemName, FieldName, CreatePipeline, LinkGenerator, Scraper, Settings, ShareDB, ChangePass, ShareProject
 from django.http import HttpResponseRedirect
 from django.http import HttpResponse, HttpResponseNotFound, JsonResponse
-from .models import Project, Item, Pipeline, Field, MongoPass, LinkgenDeploy, ScrapersDeploy
+from .models import Project, Item, Pipeline, Field, LinkgenDeploy, ScrapersDeploy, Dataset
 from django.forms.util import ErrorList
 from itertools import groupby
 from django.core.urlresolvers import reverse
@@ -88,18 +89,17 @@ ROBOTSTXT_OBEY = True
 @login_required
 def main_page(request):
     projects = Project.objects.filter(user=request.user)
+    datasets = Dataset.objects.filter(user=request.user)
     userprojects = []
+    databases = ''
     for project in projects:
         singleproject = {}
         singleproject['name'] = project.project_name
         userprojects.append(singleproject)
-    try:
-        dbpass = MongoPass.objects.get(user=request.user)
-        dbpassexists = True
-    except MongoPass.DoesNotExist:
-        dbpassexists = False
+    for dataset in datasets:
+        databases += dataset['database']
     return render(request, template_name="mainpage.html",
-                  context={'username': request.user.username, 'projects': userprojects, 'dbpassexists': dbpassexists})
+                  context={'username': request.user.username, 'projects': userprojects, 'databases': databases})
 
 
 @login_required
@@ -131,21 +131,21 @@ def create_new(request):
                     project.link_generator = '''start_urls = [""]\ndef parse(self, response):\n    pass'''
                     project.save()
 
-                    # project data will be saved in username_projectname database, so we need to add the user
-                    # and the password for that database
-                    # if mongodb password hasn't been set by the user, set the password as the name of the user
+                    # project data will be saved in username_projectname database, so we need to
+                    # give the current user ownership of that database
 
                     mongodbname = request.user.username + "_" + project.project_name
-                    try:
-                        dbpass = MongoPass.objects.get(user=request.user)
-                        mongopass = dbpass.password
-                    except MongoPass.DoesNotExist:
-                        mongopass = request.user.username
                     mongouri = "mongodb://" + settings.MONGODB_USER + ":" + quote(settings.MONGODB_PASSWORD) + "@" + settings.MONGODB_URI + "/admin"
                     connection = MongoClient(mongouri)
-                    connection[mongodbname].add_user(request.user.username, mongopass,
-                                                     roles=[{'role': 'dbOwner', 'db': mongodbname}])
+                    connection.admin.command('grantRolesToUser', request.user.username,
+                                             roles=[{'role': 'dbOwner', 'db': mongodbname}])
                     connection.close()
+
+                    dataset = Dataset()
+                    dataset.user = request.user
+                    dataset.database = mongodbname
+                    dataset.save()
+
                     return HttpResponseRedirect(reverse("manageproject", args=(project.project_name,)))
 
             else:
@@ -647,39 +647,25 @@ def create_folder_tree(tree):
 
 
 @login_required
-def create_db_pass(request):
-    if request.method == 'GET':
-        try:
-            dbpass = MongoPass.objects.get(user=request.user)
-            password = dbpass.password
-        except MongoPass.DoesNotExist:
-            password = ''
-        form = CreateDBPass(initial={'password': password})
-        return render(request, 'createdbpass.html', {'username': request.user.username, 'form': form})
-    elif request.method == 'POST':
-        if 'cancel' in request.POST:
+def change_password(request):
+    if request.method == 'POST':
+        form = ChangePass(request.user, request.POST)
+        if form.is_valid():
+            user = form.save()
+            update_session_auth_hash(request, user)
+            mongodb_user_password_change(request.user.username, form.cleaned_data['new_password1'])
             return HttpResponseRedirect(reverse("mainpage"))
-        elif 'submit' in request.POST:
-            try:
-                dbpass = MongoPass.objects.get(user=request.user)
-            except MongoPass.DoesNotExist:
-                dbpass = MongoPass()
-                dbpass.user = request.user
-            form = CreateDBPass(request.POST)
-            if form.is_valid():
-                dbpass.password = form.cleaned_data['password']
-                dbpass.save()
-                projects = Project.objects.filter(user=request.user)
-                mongouri = "mongodb://" + settings.MONGODB_USER + ":" + quote(settings.MONGODB_PASSWORD) + "@" + settings.MONGODB_URI + "/admin"
-                connection = MongoClient(mongouri)
-                for project in projects:
-                    mongodbname = request.user.username + "_" + project.project_name
-                    connection[mongodbname].add_user(request.user.username, dbpass.password,
-                                                 roles=[{'role': 'dbOwner', 'db': mongodbname}])
-                connection.close()
-                return HttpResponseRedirect(reverse("mainpage"))
-            else:
-                return render(request, 'createdbpass.html', {'username': request.user.username, 'form': form})
+        else:
+            return render(request, 'changepassword.html', {
+                'username': request.user.username,
+                'form': form
+            })
+    else:
+        form = ChangePass(request.user)
+    return render(request, 'changepassword.html', {
+        'username': request.user.username,
+        'form': form
+    })
 
 
 @login_required
@@ -1446,11 +1432,6 @@ def share_db(request, projectname):
         if 'cancel' in request.POST:
             return HttpResponseRedirect(reverse("mainpage"))
         elif 'submit' in request.POST:
-            try:
-                dbpass = MongoPass.objects.get(user=request.user)
-                password = dbpass.password
-            except MongoPass.DoesNotExist:
-                password = request.user.username
             form = ShareDB(request.POST)
             if form.is_valid():
                 uname = form.cleaned_data['username']
@@ -1474,23 +1455,50 @@ def share_db(request, projectname):
                 return render(request, 'sharedb.html', {'username': request.user.username, 'form': form, 'projectname': projectname})
 
 
-def sharing_db(dbname, target_user, projectname, username):
-    targetuser = User.objects.get(username=target_user)
-    target_db_name = '%s_sharedby_%s' % (projectname, username)
-
+@login_required
+def share_project(request, projectname):
     try:
-        dbpass = MongoPass.objects.get(user=targetuser)
-        target_password = dbpass.password
-    except MongoPass.DoesNotExist:
-        target_password = target_user
+        project = Project.objects.get(user=request.user, project_name=projectname)
+    except Project.DoesNotExist:
+        return HttpResponseNotFound('Nothing is here.')
 
+    if request.method == 'GET':
+        form = ShareProject()
+        return render(request, 'shareproject.html', {'username': request.user.username, 'form': form, 'projectname': projectname})
+    if request.method == 'POST':
+        if 'cancel' in request.POST:
+            return HttpResponseRedirect(reverse("mainpage"))
+        elif 'submit' in request.POST:
+            form = ShareProject(request.POST)
+            if form.is_valid():
+                uname = form.cleaned_data['username']
+                if uname == request.user.username:
+                    errors = form._errors.setdefault("username", ErrorList())
+                    errors.append('User name %s is your own account name.' % uname)
+                    return render(request, 'shareproject.html',
+                                  {'username': request.user.username, 'form': form, 'projectname': projectname})
+                try:
+                    username = User.objects.get(username=uname)
+                except User.DoesNotExist:
+                    errors = form._errors.setdefault("username", ErrorList())
+                    errors.append('User %s does not exist in the system.' % uname)
+                    return render(request, 'shareproject.html', {'username': request.user.username, 'form': form, 'projectname': projectname})
+                #start thread here
+                thr = threading.Thread(target=sharing_project, args=(username.username, projectname, request.user.username), kwargs={})
+                thr.start()
+                return HttpResponseRedirect(reverse("mainpage"))
+            else:
+                return render(request, 'shareproject.html', {'username': request.user.username, 'form': form, 'projectname': projectname})
+
+
+def sharing_db(dbname, target_user, projectname, username):
+    target_db_name = '%s_sharedby_%s' % (projectname, username)
+    targetuser = User.objects.get(username=target_user)
     mongouri = "mongodb://" + settings.MONGODB_USER + ":" + quote(
         settings.MONGODB_PASSWORD) + "@" + settings.MONGODB_URI + "/admin"
     connection = MongoClient(mongouri)
 
     database = connection[dbname]
-
-    target_db = connection[target_db_name]
 
     if settings.MONGODB_SHARDED:
         try:
@@ -1519,7 +1527,70 @@ def sharing_db(dbname, target_user, projectname, username):
                 insertcol.insert_many(items)
                 collection = col.find(filter={}, projection={'_id': False}, limit=100, skip=skip * 100)
 
-    target_db.add_user(target_user, target_password,
-                       roles=[{'role': 'dbOwner', 'db': target_db_name}])
+    connection.admin.command('grantRolesToUser', target_user,
+                             roles=[{'role': 'dbOwner', 'db': target_db_name}])
+
+    dataset = Dataset()
+    dataset.user = targetuser
+    dataset.database = target_db_name
+    dataset.save()
+
     connection.close()
 
+
+def sharing_project(target_user, projectname, username):
+    target_project_name = '%s_sharedby_%s' % (projectname, username)
+    targetuser = User.objects.get(username=target_user)
+
+    project = Project.objects.get(user=User.objects.get(username=username), project_name=projectname)
+    newproject = Project(user=targetuser, project_name=target_project_name, link_generator=project.link_generator,
+                         scraper_function=project.scraper_function, settings_scraper=project.settings_scraper,
+                         settings_link_generator=project.settings_link_generator)
+    newproject.save()
+
+    items = Item.objects.filter(project=project)
+
+    for item in items:
+        newitem = Item(item_name=item.item_name, project=newproject)
+        newitem.save()
+        fields = Field.objects.filter(item=item)
+        for field in fields:
+            newfield = Field(item=newitem, field_name=field.field_name)
+            newfield.save()
+
+    pipelines = Pipeline.objects.filter(project=project)
+
+    for pipeline in pipelines:
+        newpipeline = Pipeline(project=newproject, pipeline_function=pipeline.pipeline_function,
+                               pipeline_name=pipeline.pipeline_name, pipeline_order=pipeline.pipeline_order)
+        newpipeline.save()
+
+    mongouri = "mongodb://" + settings.MONGODB_USER + ":" + quote(
+        settings.MONGODB_PASSWORD) + "@" + settings.MONGODB_URI + "/admin"
+    connection = MongoClient(mongouri)
+
+    connection.admin.command('grantRolesToUser', target_user,
+                             roles=[{'role': 'dbOwner', 'db': target_user + '_' + target_project_name}])
+
+    dataset = Dataset()
+    dataset.user = targetuser
+    dataset.database = target_user + '_' + target_project_name
+    dataset.save()
+
+    connection.close()
+
+
+def mongodb_user_creation(username, password):
+    mongouri = "mongodb://" + settings.MONGODB_USER + ":" + quote(
+        settings.MONGODB_PASSWORD) + "@" + settings.MONGODB_URI + "/admin"
+    connection = MongoClient(mongouri)
+    connection.admin.command('createUser', username, pwd=password, roles=[])
+    connection.close()
+
+
+def mongodb_user_password_change(username, password):
+    mongouri = "mongodb://" + settings.MONGODB_USER + ":" + quote(
+        settings.MONGODB_PASSWORD) + "@" + settings.MONGODB_URI + "/admin"
+    connection = MongoClient(mongouri)
+    connection.admin.command('updateUser', username, pwd=password)
+    connection.close()

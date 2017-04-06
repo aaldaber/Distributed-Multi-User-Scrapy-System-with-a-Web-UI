@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Set Database Password{% endblock %}
+{% block title %}Share Project{% endblock %}
 
 {% load crispy_forms_tags %}
 
@@ -11,7 +11,7 @@
 				<div class="login-wrapper">
 			        <div class="box">
 			            <div class="content-wrap">
-			                <h6>Enter new database password</h6>
+			                <h6>You are sharing the project {{ projectname }}</h6>
                             {% csrf_token %}
                             {% crispy form %}
 			            </div>

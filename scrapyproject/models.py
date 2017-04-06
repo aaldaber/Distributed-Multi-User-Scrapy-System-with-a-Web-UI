@@ -54,6 +54,6 @@ class ScrapersDeploy(models.Model):
     version = models.IntegerField(blank=False, default=0)
 
 
-class MongoPass(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    password = models.CharField(max_length=200, blank=False)
+class Dataset(models.Model):
+    user = models.ForeignKey(User)
+    database = models.CharField(max_length=50)

@@ -1,6 +1,7 @@
 from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
+from django.contrib.auth.forms import PasswordChangeForm
 
 
 class CreateProject(forms.Form):
@@ -61,13 +62,10 @@ class FieldName(forms.Form):
             self.fields['field_{index}'.format(index=index+2)] = forms.CharField(required=False)
 
 
-class CreateDBPass(forms.Form):
-    password = forms.CharField(label="Set the password for database access", max_length=200, required=True,
-                               widget=forms.PasswordInput)
+class ChangePass(PasswordChangeForm):
     helper = FormHelper()
     helper.form_method = 'POST'
-    helper.add_input(Submit('submit', 'Save'))
-    helper.add_input(Submit('cancel', 'Cancel', css_class='btn-default'))
+    helper.add_input(Submit('submit', 'Change'))
 
 
 class Settings(forms.Form):
@@ -78,6 +76,14 @@ class Settings(forms.Form):
 
 class ShareDB(forms.Form):
     username = forms.CharField(label="Enter the account name for the user with whom you want to share the database", max_length=150, required=True)
+    helper = FormHelper()
+    helper.form_method = 'POST'
+    helper.add_input(Submit('submit', 'Share'))
+    helper.add_input(Submit('cancel', 'Cancel', css_class='btn-default'))
+
+
+class ShareProject(forms.Form):
+    username = forms.CharField(label="Enter the account name for the user with whom you want to share the project", max_length=150, required=True)
     helper = FormHelper()
     helper.form_method = 'POST'
     helper.add_input(Submit('submit', 'Share'))

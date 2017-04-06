@@ -17,7 +17,7 @@ urlpatterns = [
     url(r'^linkgenerator/(?P<projectname>[\w]+)/', views.linkgenerator, name="linkgenerator"),
     url(r'^scraper/(?P<projectname>[\w]+)/', views.scraper, name="scraper"),
     url(r'^deploy/(?P<projectname>[\w]+)/', views.deploy, name='deploy'),
-    url(r'^setdbpass/$', views.create_db_pass, name="setdbpass"),
+    url(r'^changepassword/$', views.change_password, name="changepass"),
     url(r'^deploystatus/(?P<projectname>[\w]+)/', views.deployment_status, name="deploystatus"),
     url(r'^startproject/(?P<projectname>[\w]+)/(?P<worker>[\w]+)/', views.start_project, name="startproject"),
     url(r'^stopproject/(?P<projectname>[\w]+)/(?P<worker>[\w]+)/', views.stop_project, name="stopproject"),
@@ -29,4 +29,5 @@ urlpatterns = [
     url(r'^stoponall/(?P<projectname>[\w]+)/', views.stop_project_on_all, name="stoponall"),
     url(r'^globalstatus/', views.get_global_system_status, name="globalstatus"),
     url(r'^sharedb/(?P<projectname>[\w]+)/', views.share_db, name="sharedatabase"),
+    url(r'^shareproject/(?P<projectname>[\w]+)/', views.share_project, name="shareproject"),
 ]
