@@ -19,7 +19,9 @@
                         </div>
                         <ul class="nav">
                             <li><a>Databases you can access:</a></li>
-                            <li><a>{{ databases }}</a></li>
+                            {% for i in databases %}
+                            <li><a>{{ i }}</a></li>
+                            {% endfor %}
                         </ul>
                     </div>
 		        </div>

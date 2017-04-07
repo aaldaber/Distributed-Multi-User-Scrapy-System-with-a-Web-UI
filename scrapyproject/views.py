@@ -91,13 +91,13 @@ def main_page(request):
     projects = Project.objects.filter(user=request.user)
     datasets = Dataset.objects.filter(user=request.user)
     userprojects = []
-    databases = ''
+    databases = []
     for project in projects:
         singleproject = {}
         singleproject['name'] = project.project_name
         userprojects.append(singleproject)
     for dataset in datasets:
-        databases += dataset.database
+        databases.append(dataset.database)
     return render(request, template_name="mainpage.html",
                   context={'username': request.user.username, 'projects': userprojects, 'databases': databases})
 
