@@ -1503,8 +1503,8 @@ def sharing_db(dbname, target_user, projectname, username):
 
     while not checked_all_database_names:
         checked_all_database_names = 1
-        for dbname in existing_dbs:
-            if str(dbname) == target_db_name:
+        for onedbname in existing_dbs:
+            if str(onedbname) == target_db_name:
                 target_db_name += str(db_version)
                 db_version += 1
                 checked_all_database_names = 0
