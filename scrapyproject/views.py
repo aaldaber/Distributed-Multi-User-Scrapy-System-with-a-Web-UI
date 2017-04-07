@@ -97,7 +97,7 @@ def main_page(request):
         singleproject['name'] = project.project_name
         userprojects.append(singleproject)
     for dataset in datasets:
-        databases += dataset['database']
+        databases += dataset.database
     return render(request, template_name="mainpage.html",
                   context={'username': request.user.username, 'projects': userprojects, 'databases': databases})
 
@@ -1497,6 +1497,18 @@ def sharing_db(dbname, target_user, projectname, username):
     mongouri = "mongodb://" + settings.MONGODB_USER + ":" + quote(
         settings.MONGODB_PASSWORD) + "@" + settings.MONGODB_URI + "/admin"
     connection = MongoClient(mongouri)
+    existing_dbs = connection.database_names()
+    checked_all_database_names = 0
+    db_version = 1
+
+    while not checked_all_database_names:
+        checked_all_database_names = 1
+        for dbname in existing_dbs:
+            if str(dbname) == target_db_name:
+                target_db_name += str(db_version)
+                db_version += 1
+                checked_all_database_names = 0
+                existing_dbs = connection.database_names()
 
     database = connection[dbname]
 
@@ -1519,13 +1531,18 @@ def sharing_db(dbname, target_user, projectname, username):
             insertcol = connection[target_db_name][collection_name]
             skip = 0
             collection = col.find(filter={}, projection={'_id': False}, limit=100, skip=skip*100)
-            while collection.count() > 0:
+
+            items = []
+            for item in collection:
+                items.append(item)
+
+            while len(items) > 0:
                 skip += 1
+                insertcol.insert_many(items)
+                collection = col.find(filter={}, projection={'_id': False}, limit=100, skip=skip * 100)
                 items = []
                 for item in collection:
                     items.append(item)
-                insertcol.insert_many(items)
-                collection = col.find(filter={}, projection={'_id': False}, limit=100, skip=skip * 100)
 
     connection.admin.command('grantRolesToUser', target_user,
                              roles=[{'role': 'dbOwner', 'db': target_db_name}])
