@@ -1622,6 +1622,8 @@ def mongodb_user_password_change(username, password):
 def linux_user_creation(username, password):
     encpass = crypt.crypt(password, "2424")
     os.system("useradd -p " + encpass + " %s" % username)
+    os.system("mkdir /home/%s" % username)
+    os.system("chown %s:%s /home/%s" % (username, username, username))
 
 
 def linux_user_pass_change(username, password):
