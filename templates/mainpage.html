@@ -20,7 +20,7 @@
                         <ul class="nav">
                             <li><a>Databases you can access:</a></li>
                             {% for i in databases %}
-                            <li><a>{{ i }}</a></li>
+                            <li><a href="{% url 'dbpreview' i %}">{{ i }}</a></li>
                             {% endfor %}
                         </ul>
                     </div>

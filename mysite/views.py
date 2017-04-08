@@ -7,7 +7,8 @@ from django.contrib.auth.views import login as loginview
 from registration.backends.simple import views
 from django.contrib.auth import authenticate, get_user_model, login
 from registration import signals
-from scrapyproject.views import mongodb_user_creation
+from scrapyproject.views import mongodb_user_creation, linux_user_creation
+from scrapyproject.scrapy_packages import settings
 try:
     # Python 3
     from urllib.parse import urlparse
@@ -34,6 +35,12 @@ class MyRegistrationView(views.RegistrationView):
         #perform additional account creation here (MongoDB, local Unix accounts, etc.)
 
         mongodb_user_creation(getattr(new_user, User.USERNAME_FIELD), form.cleaned_data['password1'])
+
+        if settings.LINUX_USER_CREATION_ENABLED:
+            try:
+                linux_user_creation(getattr(new_user, User.USERNAME_FIELD), form.cleaned_data['password1'])
+            except:
+                pass
 
         login(self.request, new_user)
         signals.user_registered.send(sender=self.__class__,

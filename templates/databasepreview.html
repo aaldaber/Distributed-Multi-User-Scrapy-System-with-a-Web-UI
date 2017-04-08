@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Database Preview{% endblock %}
+{% block content %}
+    {% load static %}
+
+        <div class="page-content">
+    	    <div class="row">
+		        <div class="col-md-3">
+		  	        <div class="sidebar content-box" style="display: block;">
+                        <div class="text-center">
+                            <a href="{% url 'newproject' %}" class="btn btn-info btn-block" role="button">New Project</a>
+                        </div>
+                        <ul id="system-status" class="nav">
+                        <!-- Main menu -->
+                            <li><a><i class="glyphicon glyphicon-stats"></i>System Status</a></li>
+                        </ul>
+                        <div class="text-center">
+                            <a href="{% url 'changepass' %}" class="btn btn-info btn-block" role="button">Change Account Password</a>
+                        </div>
+                        <ul class="nav">
+                            <li><a>Databases you can access:</a></li>
+                            {% for i in databases %}
+                            <li><a href="{% url 'dbpreview' i %}">{{ i }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+		        </div>
+            {% for key, values in preview_data.items %}
+                <div class="col-md-9">
+                    <div class="content-box-large">
+  				        <div class="panel-heading">
+					        <div class="panel-title">{{ key }}</div>
+				        </div>
+                        {% if values %}
+  				        <div class="panel-body">
+                            <pre id="{{ key }}">
+  					        {{ values }}
+                            </pre>
+  				        </div>
+                        {% else %}
+                        <div class="panel-body">
+                            Empty collection
+                        </div>
+                        {% endif %}
+  			        </div>
+                </div>
+            {% endfor %}
+            </div>
+        </div>
+
+{% endblock %}
+
+{% block custom_scripts %}
+
+    <script>
+
+    $(document).ready(function(){
+        get_system_status();
+        {% for key, values in preview_data.items %}
+            {% autoescape off %}
+            data{{ key }} = {{ values }}
+            {% endautoescape %}
+            document.getElementById("{{ key }}").innerHTML = JSON.stringify(data{{ key }}, undefined, 2);
+        {% endfor %}
+});
+
+    </script>
+{% endblock %}

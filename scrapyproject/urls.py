@@ -30,4 +30,5 @@ urlpatterns = [
     url(r'^globalstatus/', views.get_global_system_status, name="globalstatus"),
     url(r'^sharedb/(?P<projectname>[\w]+)/', views.share_db, name="sharedatabase"),
     url(r'^shareproject/(?P<projectname>[\w]+)/', views.share_project, name="shareproject"),
+    url(r'^dbpreview/(?P<db>[\w]+)/', views.database_preview, name="dbpreview"),
 ]

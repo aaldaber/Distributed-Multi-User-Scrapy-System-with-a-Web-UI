@@ -16,3 +16,5 @@ MONGODB_BUFFER_DATA = 100
 LINK_GENERATOR = 'http://192.168.0.209:6800'  # Set your link generator worker address here
 SCRAPERS = ['http://192.168.0.210:6800',
             'http://192.168.0.211:6800', 'http://192.168.0.212:6800']  # Set your scraper worker addresses here
+
+LINUX_USER_CREATION_ENABLED = False  # Set this to True if you want a linux user account created during registration

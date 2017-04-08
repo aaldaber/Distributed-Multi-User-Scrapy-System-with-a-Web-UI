@@ -23,6 +23,7 @@ import socket
 from django.contrib.auth.models import User
 from bson.json_util import dumps
 import threading
+import crypt
 try:
     # Python 3
     from urllib.parse import urlparse
@@ -654,6 +655,11 @@ def change_password(request):
             user = form.save()
             update_session_auth_hash(request, user)
             mongodb_user_password_change(request.user.username, form.cleaned_data['new_password1'])
+            if settings.LINUX_USER_CREATION_ENABLED:
+                try:
+                    linux_user_pass_change(request.user.username, form.cleaned_data['new_password1'])
+                except:
+                    pass
             return HttpResponseRedirect(reverse("mainpage"))
         else:
             return render(request, 'changepassword.html', {
@@ -1611,3 +1617,45 @@ def mongodb_user_password_change(username, password):
     connection = MongoClient(mongouri)
     connection.admin.command('updateUser', username, pwd=password)
     connection.close()
+
+
+def linux_user_creation(username, password):
+    encpass = crypt.crypt(password, "2424")
+    os.system("useradd -p " + encpass + " %s" % username)
+
+
+def linux_user_pass_change(username, password):
+    encpass = crypt.crypt(password, "2424")
+    os.system("usermod -p " + encpass + " %s" % username)
+
+
+@login_required
+def database_preview(request, db):
+    datasets = Dataset.objects.filter(user=request.user)
+    databases = []
+    for dataset in datasets:
+        databases.append(dataset.database)
+
+    if db not in databases:
+        return HttpResponseNotFound('Nothing is here.')
+
+    mongouri = "mongodb://" + settings.MONGODB_USER + ":" + quote(
+        settings.MONGODB_PASSWORD) + "@" + settings.MONGODB_URI + "/admin"
+    connection = MongoClient(mongouri)
+    database = connection[db]
+
+    preview_data = {}
+
+    collections = database.collection_names()
+
+    for i, collection_name in enumerate(collections):
+        if collection_name != u'system.indexes':
+            col = database[collection_name]
+            collection = col.find(filter={}, projection={'_id': False}, limit=10, skip=0)
+            items = []
+            for item in collection:
+                items.append(item)
+            preview_data[collection_name] = json.dumps(items, ensure_ascii=False)
+
+    return render(request, template_name="databasepreview.html",
+                  context={'username': request.user.username, 'databases': databases, 'preview_data': preview_data})
