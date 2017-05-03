@@ -75,6 +75,22 @@ The dashboard theme used for the UI was retrieved from https://github.com/VinceG
 
 Link generator and scraper functions are given in the examples folder.
 
+# Screenshots
+
+![Alt text](/screenshots/registration.png?raw=true "Registration page")
+![Alt text](/screenshots/main_page.png?raw=true "Main page")
+![Alt text](/screenshots/main_page_project.png?raw=true "Main page")
+![Alt text](/screenshots/new_project.png?raw=true "New project")
+![Alt text](/screenshots/manage_project.png?raw=true "Manage project")
+![Alt text](/screenshots/additem.png?raw=true "Add item")
+![Alt text](/screenshots/itemslist.png?raw=true "List of items")
+![Alt text](/screenshots/addpipeline.png?raw=true "Add pipeline function")
+![Alt text](/screenshots/pipelinelist.png?raw=true "List of pipeline functions")
+![Alt text](/screenshots/addlinkgen.png?raw=true "Link generator")
+![Alt text](/screenshots/addscraper.png?raw=true "Scraper")
+![Alt text](/screenshots/deployment.png?raw=true "Project deployment")
+![Alt text](/screenshots/main_page_scraped.png?raw=true "Main page")
+
 # License
 
 This project is licensed under the terms of the MIT license.
